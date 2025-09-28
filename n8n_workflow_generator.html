@@ -1,0 +1,562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>N8N Workflow Generator</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+            max-width: 800px;
+            width: 100%;
+        }
+        
+        h1 {
+            text-align: center;
+            color: #333;
+            margin-bottom: 10px;
+            font-size: 2.5em;
+            font-weight: 700;
+        }
+        
+        .subtitle {
+            text-align: center;
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 1.1em;
+        }
+        
+        .form-group {
+            margin-bottom: 25px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        textarea, input, select {
+            width: 100%;
+            padding: 15px;
+            border: 2px solid #e1e5e9;
+            border-radius: 10px;
+            font-size: 16px;
+            transition: all 0.3s ease;
+            font-family: inherit;
+        }
+        
+        textarea {
+            min-height: 120px;
+            resize: vertical;
+        }
+        
+        textarea:focus, input:focus, select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+        
+        .btn {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            width: 100%;
+            margin-top: 20px;
+        }
+        
+        .btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3);
+        }
+        
+        .btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .output {
+            margin-top: 30px;
+            padding: 20px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+            display: none;
+        }
+        
+        .output.show {
+            display: block;
+            animation: slideIn 0.3s ease;
+        }
+        
+        @keyframes slideIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .json-output {
+            background: #2d3748;
+            color: #e2e8f0;
+            padding: 20px;
+            border-radius: 8px;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            max-height: 400px;
+            overflow-y: auto;
+            margin: 15px 0;
+            white-space: pre-wrap;
+        }
+        
+        .download-btn {
+            background: #48bb78;
+            margin-top: 10px;
+            margin-right: 10px;
+            width: auto;
+            display: inline-block;
+        }
+        
+        .copy-btn {
+            background: #4299e1;
+            margin-top: 10px;
+            width: auto;
+            display: inline-block;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .examples {
+            background: #e6fffa;
+            padding: 20px;
+            border-radius: 10px;
+            margin: 20px 0;
+            border-left: 4px solid #48bb78;
+        }
+        
+        .examples h3 {
+            color: #2d3748;
+            margin-bottom: 10px;
+        }
+        
+        .examples ul {
+            color: #4a5568;
+            padding-left: 20px;
+        }
+        
+        .examples li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🤖 N8N Workflow Generator</h1>
+        <p class="subtitle">Transform natural language descriptions into N8N workflows</p>
+        
+        <div class="examples">
+            <h3>💡 Example Prompts:</h3>
+            <ul>
+                <li>"Send me an email when a new item is added to my RSS feed"</li>
+                <li>"Post to Slack when someone submits a form on my website"</li>
+                <li>"Save Gmail attachments to Google Drive and notify me via Discord"</li>
+                <li>"Monitor Twitter for mentions and add them to a Google Sheet"</li>
+                <li>"Send a welcome email series when someone subscribes to my newsletter"</li>
+            </ul>
+        </div>
+        
+        <form id="workflowForm">
+            <div class="form-group">
+                <label for="prompt">Describe your workflow:</label>
+                <textarea id="prompt" placeholder="E.g., 'When someone fills out my contact form, send me an email and add their information to a Google Sheet'" required></textarea>
+            </div>
+            
+            <div class="form-group">
+                <label for="workflowName">Workflow Name:</label>
+                <input type="text" id="workflowName" placeholder="My Awesome Workflow" required>
+            </div>
+            
+            <div class="form-group">
+                <label for="complexity">Workflow Complexity:</label>
+                <select id="complexity">
+                    <option value="simple">Simple (2-3 nodes)</option>
+                    <option value="medium" selected>Medium (4-6 nodes)</option>
+                    <option value="complex">Complex (7+ nodes)</option>
+                </select>
+            </div>
+            
+            <button type="submit" class="btn">🚀 Generate N8N Workflow</button>
+        </form>
+        
+        <div id="output" class="output">
+            <h3>Generated N8N Workflow:</h3>
+            <div id="loading" class="loading" style="display: none;">
+                ⚡ Generating your workflow...
+            </div>
+            <div id="jsonOutput" class="json-output"></div>
+            <button id="downloadBtn" class="btn download-btn">📥 Download JSON</button>
+            <button id="copyBtn" class="btn copy-btn">📋 Copy to Clipboard</button>
+        </div>
+    </div>
+
+    <script>
+        // N8N Node Templates
+        const nodeTemplates = {
+            webhook: {
+                id: "webhook",
+                name: "Webhook",
+                type: "n8n-nodes-base.webhook",
+                typeVersion: 1,
+                position: [300, 300],
+                parameters: {
+                    httpMethod: "POST",
+                    path: "webhook-url",
+                    responseMode: "onReceived"
+                }
+            },
+            email: {
+                id: "email",
+                name: "Email",
+                type: "n8n-nodes-base.emailSend",
+                typeVersion: 1,
+                position: [500, 300],
+                parameters: {
+                    fromEmail: "noreply@example.com",
+                    toEmail: "user@example.com",
+                    subject: "New notification",
+                    text: "You have a new notification"
+                }
+            },
+            googleSheets: {
+                id: "googleSheets", 
+                name: "Google Sheets",
+                type: "n8n-nodes-base.googleSheets",
+                typeVersion: 3,
+                position: [700, 300],
+                parameters: {
+                    operation: "append",
+                    documentId: "your-sheet-id",
+                    sheetName: "Sheet1"
+                }
+            },
+            slack: {
+                id: "slack",
+                name: "Slack",
+                type: "n8n-nodes-base.slack", 
+                typeVersion: 1,
+                position: [500, 300],
+                parameters: {
+                    operation: "postMessage",
+                    channel: "#general",
+                    text: "New notification"
+                }
+            },
+            discord: {
+                id: "discord",
+                name: "Discord",
+                type: "n8n-nodes-base.discord",
+                typeVersion: 1,
+                position: [500, 300],
+                parameters: {
+                    operation: "sendMessage",
+                    channelId: "your-channel-id",
+                    content: "New notification"
+                }
+            },
+            rss: {
+                id: "rss",
+                name: "RSS Feed Read",
+                type: "n8n-nodes-base.rssFeedRead",
+                typeVersion: 1,
+                position: [300, 300],
+                parameters: {
+                    url: "https://example.com/feed.xml"
+                }
+            },
+            cron: {
+                id: "cron",
+                name: "Cron",
+                type: "n8n-nodes-base.cron",
+                typeVersion: 1,
+                position: [300, 300],
+                parameters: {
+                    triggerTimes: {
+                        hour: 9,
+                        minute: 0
+                    }
+                }
+            },
+            twitter: {
+                id: "twitter",
+                name: "Twitter",
+                type: "n8n-nodes-base.twitter",
+                typeVersion: 1,
+                position: [300, 300],
+                parameters: {
+                    operation: "search",
+                    searchText: "@yourusername"
+                }
+            },
+            gmail: {
+                id: "gmail",
+                name: "Gmail",
+                type: "n8n-nodes-base.gmail",
+                typeVersion: 1,
+                position: [300, 300],
+                parameters: {
+                    operation: "getAll",
+                    simple: false
+                }
+            },
+            googleDrive: {
+                id: "googleDrive",
+                name: "Google Drive",
+                type: "n8n-nodes-base.googleDrive",
+                typeVersion: 3,
+                position: [500, 300],
+                parameters: {
+                    operation: "upload"
+                }
+            },
+            if: {
+                id: "if",
+                name: "IF",
+                type: "n8n-nodes-base.if",
+                typeVersion: 1,
+                position: [500, 300],
+                parameters: {
+                    conditions: {
+                        string: [
+                            {
+                                value1: "",
+                                operation: "contains"
+                            }
+                        ]
+                    }
+                }
+            },
+            set: {
+                id: "set",
+                name: "Set",
+                type: "n8n-nodes-base.set",
+                typeVersion: 1,
+                position: [400, 300],
+                parameters: {
+                    values: {
+                        string: [
+                            {
+                                name: "data",
+                                value: ""
+                            }
+                        ]
+                    }
+                }
+            }
+        };
+
+        function analyzePrompt(prompt) {
+            const keywords = {
+                triggers: {
+                    'form': 'webhook',
+                    'webhook': 'webhook', 
+                    'contact form': 'webhook',
+                    'rss': 'rss',
+                    'feed': 'rss',
+                    'schedule': 'cron',
+                    'daily': 'cron',
+                    'hourly': 'cron',
+                    'twitter': 'twitter',
+                    'mention': 'twitter',
+                    'gmail': 'gmail',
+                    'email receive': 'gmail'
+                },
+                actions: {
+                    'email': 'email',
+                    'send email': 'email',
+                    'notify': 'email',
+                    'slack': 'slack',
+                    'discord': 'discord',
+                    'google sheet': 'googleSheets',
+                    'spreadsheet': 'googleSheets',
+                    'google drive': 'googleDrive',
+                    'save file': 'googleDrive',
+                    'attachment': 'googleDrive'
+                },
+                conditions: {
+                    'if': 'if',
+                    'when': 'if',
+                    'condition': 'if',
+                    'contains': 'if',
+                    'filter': 'if'
+                }
+            };
+
+            const detectedNodes = [];
+            const lowerPrompt = prompt.toLowerCase();
+
+            // Detect trigger
+            let triggerFound = false;
+            for (const [keyword, nodeType] of Object.entries(keywords.triggers)) {
+                if (lowerPrompt.includes(keyword) && !triggerFound) {
+                    detectedNodes.push(nodeType);
+                    triggerFound = true;
+                    break;
+                }
+            }
+
+            // If no trigger found, default to webhook
+            if (!triggerFound) {
+                detectedNodes.push('webhook');
+            }
+
+            // Detect conditions
+            for (const [keyword, nodeType] of Object.entries(keywords.conditions)) {
+                if (lowerPrompt.includes(keyword)) {
+                    detectedNodes.push(nodeType);
+                    break;
+                }
+            }
+
+            // Detect actions
+            for (const [keyword, nodeType] of Object.entries(keywords.actions)) {
+                if (lowerPrompt.includes(keyword)) {
+                    detectedNodes.push(nodeType);
+                }
+            }
+
+            // If multiple outputs, add a Set node for data transformation
+            if (detectedNodes.length > 2) {
+                detectedNodes.splice(1, 0, 'set');
+            }
+
+            return detectedNodes;
+        }
+
+        function generateWorkflow(prompt, workflowName, complexity) {
+            const detectedNodes = analyzePrompt(prompt);
+            const nodes = [];
+            const connections = {};
+
+            // Generate nodes with proper positioning
+            detectedNodes.forEach((nodeType, index) => {
+                const template = JSON.parse(JSON.stringify(nodeTemplates[nodeType]));
+                template.id = `${nodeType}_${index}`;
+                template.name = `${template.name} ${index > 0 ? index : ''}`.trim();
+                template.position = [300 + (index * 200), 300];
+                
+                // Customize based on prompt context
+                if (nodeType === 'email' && prompt.toLowerCase().includes('welcome')) {
+                    template.parameters.subject = "Welcome!";
+                    template.parameters.text = "Welcome to our service!";
+                }
+                
+                nodes.push(template);
+            });
+
+            // Generate connections
+            for (let i = 0; i < nodes.length - 1; i++) {
+                connections[nodes[i].id] = {
+                    main: [[{ node: nodes[i + 1].id, type: "main", index: 0 }]]
+                };
+            }
+
+            return {
+                name: workflowName,
+                nodes: nodes,
+                connections: connections,
+                active: false,
+                settings: {},
+                id: generateId(),
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString()
+            };
+        }
+
+        function generateId() {
+            return Math.random().toString(36).substr(2, 9);
+        }
+
+        document.getElementById('workflowForm').addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            const prompt = document.getElementById('prompt').value;
+            const workflowName = document.getElementById('workflowName').value;
+            const complexity = document.getElementById('complexity').value;
+            
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('output').classList.add('show');
+            document.getElementById('jsonOutput').textContent = '';
+            
+            // Simulate processing time
+            setTimeout(() => {
+                const workflow = generateWorkflow(prompt, workflowName, complexity);
+                const jsonString = JSON.stringify(workflow, null, 2);
+                
+                document.getElementById('loading').style.display = 'none';
+                document.getElementById('jsonOutput').textContent = jsonString;
+                
+                // Store for download
+                window.generatedWorkflow = jsonString;
+            }, 1500);
+        });
+
+        document.getElementById('downloadBtn').addEventListener('click', function() {
+            if (!window.generatedWorkflow) return;
+            
+            const blob = new Blob([window.generatedWorkflow], { type: 'application/json' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `${document.getElementById('workflowName').value.replace(/\s+/g, '_')}.json`;
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        });
+
+        document.getElementById('copyBtn').addEventListener('click', function() {
+            if (!window.generatedWorkflow) return;
+            
+            navigator.clipboard.writeText(window.generatedWorkflow).then(() => {
+                const btn = document.getElementById('copyBtn');
+                const originalText = btn.textContent;
+                btn.textContent = '✅ Copied!';
+                setTimeout(() => {
+                    btn.textContent = originalText;
+                }, 2000);
+            });
+        });
+    </script>
+</body>
+</html>
